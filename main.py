@@ -20,6 +20,12 @@ class Platformer(arcade.Window):
         self.last_x = self.width // 2
         self.last_y = 400
 
+        self.got_boot = False
+        self.got_key = False
+
+        self.jumps = 1
+        self.max_jumps = 1
+
         self.camera = arcade.Camera(self.width, self.height)
         self.player_speed = 2.5
         self.camera_y_fixed = 0 
@@ -46,6 +52,12 @@ class Platformer(arcade.Window):
         elif symbol == arcade.key.SPACE:
             if self.physik.can_jump() == True and self.physik.is_on_ladder() == False:
                 self.player.change_y += 5
+                self.jumps -= 1
+            #elif self.physik.is_on_ladder():
+                #self.player.change_y += 7
+            elif self.physik.can_jump() == False and self.jumps >= 1:
+                self.player.change_y += 5
+                self.jumps -= 1
         elif symbol == arcade.key.W:
             if self.physik.is_on_ladder() == True:
                 self.player.change_y = 2
@@ -58,11 +70,15 @@ class Platformer(arcade.Window):
             self.player.center_x = self.width // 2
             self.player.center_y = 400
             self.camera.move_to((self.player.center_x - self.width // 2, self.camera_y_fixed))
+            self.max_jumps = 1
 
         if symbol == arcade.key.T:
             self.player.center_x = self.last_x
             self.player.center_y = self.last_y + 100
             self.camera.move_to((self.player.center_x - self.width // 2, self.camera_y_fixed))
+
+        if symbol == arcade.key.L:
+            self.max_jumps += 1
 
     def on_key_release(self, symbol, modifiers):
         if symbol in (arcade.key.A, arcade.key.D, arcade.key.C, arcade.key.V):
@@ -80,6 +96,7 @@ class Platformer(arcade.Window):
         if self.physik.can_jump():
             self.last_x = self.player.center_x
             self.last_y = self.player.center_y
+            self.jumps = self.max_jumps
 
     def on_draw(self):
         self.clear()
@@ -104,8 +121,3 @@ class Platformer(arcade.Window):
 
 Platformer()
 arcade.run()
-
-#map verbessern
-#mehr funktionen
-#ui
-#ohne egninge fertig machen
