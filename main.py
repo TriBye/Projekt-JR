@@ -31,6 +31,7 @@ class Platformer(arcade.Window):
 
         self.got_boot = False
         self.got_key = False
+        self.coins = 0
 
         # Maximale Sprünge (1 bedeutet, dass nur ein Sprung möglich ist, bis der Boden berührt wird).
         self.max_jumps = 1
@@ -60,9 +61,9 @@ class Platformer(arcade.Window):
         self.keys_pressed = {}
 
     def reset_game(self):
-        """Setzt alle relevanten Spielvariablen zurück, um ein neues Spiel zu starten."""
         self.alive = True
         # Spielerposition und -geschwindigkeit zurücksetzen.
+        self.lives = 3
         self.player.center_x = self.width // 2
         self.player.center_y = 400
         self.player.change_x = 0
@@ -102,10 +103,7 @@ class Platformer(arcade.Window):
             if self.physik.is_on_ladder():
                 self.player.change_y = -2
         elif symbol == arcade.key.R:
-            self.player.center_x = self.width // 2
-            self.player.center_y = 400
-            self.max_jumps = 1
-            self.physik.enable_multi_jump(self.max_jumps)
+            self.reset_game()
         elif symbol == arcade.key.T:
             self.player.center_x = self.last_x
             self.player.center_y = self.last_y + 100
@@ -156,7 +154,12 @@ class Platformer(arcade.Window):
             self.last_y = self.player.center_y
         
         if self.player.center_y <= -10:
-            self.alive = False
+            if self.lives >= 2:
+                self.lives -= 1
+                self.player.center_x = self.width // 2
+                self.player.center_y = 400
+            else:   
+                self.alive = False
 
     def on_draw(self):
         self.clear()
@@ -196,6 +199,10 @@ class Platformer(arcade.Window):
                          arcade.color.BLACK,
                          14,
                          anchor_x="center")
+
+        arcade.draw_rectangle_filled(80, 600, 50*self.lives, 30, arcade.color.RED)
+        arcade.draw_rectangle_outline(80, 600, 150, 30, arcade.color.BLACK, 3)
+        arcade.draw_text(self.lives, 75, 590, arcade.color.WHITE, 20)
 
         # Zeichne das Tab-Bild, falls aktiviert.
         if self.show_tab:
