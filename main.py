@@ -32,7 +32,9 @@ class Platformer(arcade.Window):
 
         self.got_boot = False
         self.got_key = False
+
         self.coins = 0
+        self.coin_spawns = self.scene.get_sprite_list("Coins")
 
         # Lives and maximum jumps.
         self.lives = 3
@@ -40,6 +42,7 @@ class Platformer(arcade.Window):
 
         self.player_speed = 2.5
         self.camera_y_fixed = 0
+        self.camera_mode = 1
 
         # FPS calculation variables.
         self.last_time = time.time()
@@ -112,18 +115,15 @@ class Platformer(arcade.Window):
                     datei.write(f"{self.coins}\n")
                     datei.write(f"{self.lives}\n")
                     datei.write(f"{self.max_jumps}\n")
-                    datei.write(f"{self.safe_point[0]},{self.safe_point[1]}\n")
+                    datei.write(f"{self.player.center_x}\n")
+                    datei.write(f"{self.player.center_y}\n")
                     datei.write(f"{self.legit}\n")
                 self.save_mode = False  # exit save mode after saving
-            else:
-                # Do nothing if a non-numeric key is pressed.
-                pass
             return  # Do not process any further key actions while in save mode
 
         # --- Load Mode: Intercept key presses when loading ---
         if self.load_mode:
             if not os.path.exists("saves"):
-                # If no saves exist, simply exit load mode.
                 self.load_mode = False
             else:
                 if arcade.key.KEY_0 <= symbol <= arcade.key.KEY_9:
@@ -135,25 +135,13 @@ class Platformer(arcade.Window):
                         self.coins = int(lines[0].strip())
                         self.lives = int(lines[1].strip())
                         self.max_jumps = int(lines[2].strip())
-                        safe_point_str = lines[3].strip()
-                        safe_point_str = safe_point_str.strip("[]")
-                        parts = safe_point_str.split(",")
-                        if len(parts) >= 2:
-                            safe_x = float(parts[0].strip())
-                            safe_y = float(parts[1].strip())
-                            self.safe_point = [safe_x, safe_y]
-                            self.player.center_x = safe_x
-                            self.player.center_y = safe_y
-                        else:
-                            print("Invalid safe point data.")
-                        self.legit = lines[4].strip() == "True"
+                        self.player.center_x = float(lines[3].strip())
+                        self.player.center_y = float(lines[4].strip())
+                        self.legit = lines[5].strip() == "True"
                         self.physik.enable_multi_jump(self.max_jumps)
                     except Exception as e:
                         print("Error loading game:", e)
                     self.load_mode = False
-                else:
-                    # Do nothing if a non-numeric key is pressed.
-                    pass
             return  # Do not process any further key actions while in load mode
 
         # Otherwise, process the normal keys.
@@ -188,6 +176,11 @@ class Platformer(arcade.Window):
             self.save_game()
         elif symbol == arcade.key.LALT:
             self.load_game()
+        elif symbol == arcade.key.K:
+            if self.camera_mode == 1:
+                self.camera_mode = 2
+            else:
+                self.camera_mode = 1
 
         self.update_horizontal_movement()
 
@@ -237,6 +230,12 @@ class Platformer(arcade.Window):
         if arcade.check_for_collision_with_list(self.player, self.safe_points):
             self.safe_point = [self.player.center_x, self.player.center_y]
 
+        # --- Coin collision: remove coins and increase coin count ---
+        coins_hit = arcade.check_for_collision_with_list(self.player, self.coin_spawns)
+        for coin in coins_hit:
+            coin.remove_from_sprite_lists()  # Remove the coin.
+            self.coins += 1
+
     def on_draw(self):
         # If in save mode, show a blue screen with white text for saving.
         if self.save_mode:
@@ -264,10 +263,16 @@ class Platformer(arcade.Window):
 
         # Normal game drawing:
         self.clear()
-        left = max(0, self.player.center_x - self.width // 2)
-        right = left + self.width
-        bottom = self.camera_y_fixed
-        top = bottom + self.height
+        if self.camera_mode == 1:
+            left = max(0, self.player.center_x - self.width // 2)
+            right = left + self.width
+            bottom = self.camera_y_fixed
+            top = bottom + self.height
+        else:
+            left = max(0, self.player.center_x - self.width // 4)
+            right = left + self.width // 2
+            bottom = max(0, self.player.center_y - self.height // 4)
+            top = bottom + self.height // 2
         arcade.set_viewport(left, right, bottom, top)
         self.scene.draw()
 
@@ -290,6 +295,8 @@ class Platformer(arcade.Window):
         arcade.draw_rectangle_outline(80, 600, 150, 30, arcade.color.BLACK, 3)
         arcade.draw_text(str(self.lives),
                          75, 590, arcade.color.WHITE, 20)
+        
+        arcade.draw_text(f"{self.coins}", 800, 600, arcade.color.WHITE, 20)
 
         if self.show_tab:
             arcade.draw_texture_rectangle(self.width/2,
