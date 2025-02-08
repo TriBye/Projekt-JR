@@ -2,6 +2,8 @@ import arcade
 import time
 import os
 
+import arcade.color
+
 class Platformer(arcade.Window):
     def __init__(self):
         super().__init__(832, 624, "Plattformer")
@@ -74,34 +76,51 @@ class Platformer(arcade.Window):
         # Dictionary to track pressed keys.
         self.keys_pressed = {}
 
-    def reset_game(self):
+    def restart_game(self):
+        """
+        Completely restart the game (reloads the tilemap, resets coins, lives, etc.).
+        This is used at the start of the game.
+        """
         self.alive = True
         self.lives = 3
+        self.coins = 0
+        self.max_jumps = 1
+        self.scene = arcade.Scene.from_tilemap(self.tilemap)
+        self.scene.add_sprite("Spieler", self.player)
         self.player.center_x = self.width // 2
         self.player.center_y = 400
         self.player.change_x = 0
         self.player.change_y = 0
+        self.safe_point = [self.player.center_x, self.player.center_y]
         self.last_x = self.player.center_x
         self.last_y = self.player.center_y
-        self.max_jumps = 1
         self.physik.enable_multi_jump(self.max_jumps)
-        self.scene = arcade.Scene.from_tilemap(self.tilemap)
-        self.scene.add_sprite("Spieler", self.player)
         self.keys_pressed.clear()
 
+    def respawn(self):
+        """
+        Respawn the player at the last safe point without reloading the tilemap.
+        Resets the player's position and velocity and re-enables multi-jump
+        using the current max_jumps value. All other variables remain unchanged.
+        """
+        self.player.center_x = self.safe_point[0]
+        self.player.center_y = self.safe_point[1]
+        self.player.change_x = 0
+        self.player.change_y = 0
+        self.physik.enable_multi_jump(self.max_jumps)
     def load_game(self):
-        # Enter load mode (no print; the blue screen will be drawn in on_draw)
+        # Enter load mode (the blue screen will be drawn in on_draw)
         self.load_mode = True
 
     def save_game(self):
-        # Enter save mode (no print; the blue screen will be drawn in on_draw)
+        # Enter save mode (the blue screen will be drawn in on_draw)
         self.save_mode = True
-
     def on_key_press(self, symbol, modifiers):
-        # If the game is not active, check for ENTER to start/reset.
+        # If the game is not active (i.e. at the start screen or after game over),
+        # check for ENTER to restart the game.
         if not self.alive:
             if symbol == arcade.key.ENTER:
-                self.reset_game()
+                self.restart_game()
             return
 
         # --- Save Mode: Intercept key presses when saving ---
@@ -142,9 +161,8 @@ class Platformer(arcade.Window):
                     except Exception as e:
                         print("Error loading game:", e)
                     self.load_mode = False
-            return  # Do not process any further key actions while in load mode
+            return
 
-        # Otherwise, process the normal keys.
         self.keys_pressed[symbol] = True
 
         if symbol == arcade.key.SPACE:
@@ -157,7 +175,7 @@ class Platformer(arcade.Window):
             if self.physik.is_on_ladder():
                 self.player.change_y = -2
         elif symbol == arcade.key.R:
-            self.reset_game()
+            self.respawn()
         elif symbol == arcade.key.T:
             self.legit = False
             self.player.center_x = self.last_x
@@ -177,10 +195,7 @@ class Platformer(arcade.Window):
         elif symbol == arcade.key.LALT:
             self.load_game()
         elif symbol == arcade.key.K:
-            if self.camera_mode == 1:
-                self.camera_mode = 2
-            else:
-                self.camera_mode = 1
+            self.camera_mode = 2 if self.camera_mode == 1 else 1
 
         self.update_horizontal_movement()
 
@@ -219,10 +234,10 @@ class Platformer(arcade.Window):
 
         # Check if the player falls below the screen.
         if self.player.center_y <= -10:
-            if self.lives >= 2:
+            if self.lives > 1:
                 self.lives -= 1
-                self.player.center_x = self.width // 2
-                self.player.center_y = 400
+                # Instead of reloading the scene, simply respawn the player.
+                self.respawn()
             else:
                 self.alive = False
 
@@ -233,7 +248,7 @@ class Platformer(arcade.Window):
         # --- Coin collision: remove coins and increase coin count ---
         coins_hit = arcade.check_for_collision_with_list(self.player, self.coin_spawns)
         for coin in coins_hit:
-            coin.remove_from_sprite_lists()  # Remove the coin.
+            coin.remove_from_sprite_lists()
             self.coins += 1
 
     def on_draw(self):
@@ -242,7 +257,8 @@ class Platformer(arcade.Window):
             self.clear(arcade.color.LIGHT_BLUE)
             arcade.draw_text("Select a Save Slot to Save!",
                              self.width/2, self.height/2,
-                             arcade.color.WHITE, 20, anchor_x="center", anchor_y="center")
+                             arcade.color.WHITE, 20,
+                             anchor_x="center", anchor_y="center")
             return
 
         # If in load mode, show a blue screen with white text for loading.
@@ -250,15 +266,17 @@ class Platformer(arcade.Window):
             self.clear(arcade.color.LIGHT_BLUE)
             arcade.draw_text("Select a Save Slot to Load!",
                              self.width/2, self.height/2,
-                             arcade.color.WHITE, 20, anchor_x="center", anchor_y="center")
+                             arcade.color.WHITE, 20,
+                             anchor_x="center", anchor_y="center")
             return
 
-        # If not alive, show the start screen.
+        # If not alive, show the respawn screen.
         if not self.alive:
             self.clear(arcade.color.LIGHT_BLUE)
-            arcade.draw_text("Drücke ENTER zum Starten",
+            arcade.draw_text("Drücke R zum Respawnen",
                              self.width/2, self.height/2,
-                             arcade.color.WHITE, 20, anchor_x="center", anchor_y="center")
+                             arcade.color.WHITE, 20,
+                             anchor_x="center", anchor_y="center")
             return
 
         # Normal game drawing:
@@ -304,6 +322,9 @@ class Platformer(arcade.Window):
                                           self.tab.width,
                                           self.tab.height,
                                           self.tab)
+
+        if arcade.check_for_collision_with_list(self.player, self.safe_points):
+            arcade.draw_text("Spawnpoint Updated", 360, self.player.center_y + 50, arcade.color.WHITE, 10)
 
 def main():
     Platformer()
