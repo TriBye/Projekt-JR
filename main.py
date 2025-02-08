@@ -1,7 +1,6 @@
 import arcade
 import time
 import os
-
 import arcade.color
 
 class Platformer(arcade.Window):
@@ -28,6 +27,9 @@ class Platformer(arcade.Window):
         self.tab = arcade.load_texture("images/tab.png")
         self.show_tab = False  # Flag: whether to show the tab image.
 
+        # Load the trade image.
+        self.trade = arcade.load_texture("images/trade.png")
+
         # Last valid respawn position.
         self.last_x = self.player.center_x
         self.last_y = self.player.center_y
@@ -38,6 +40,9 @@ class Platformer(arcade.Window):
         self.coins = 0
         self.coin_spawns = self.scene.get_sprite_list("Coins")
 
+        # Get the trader sprite list from the scene.
+        self.trader = self.scene.get_sprite_list("Trader")
+    
         # Lives and maximum jumps.
         self.lives = 3
         self.max_jumps = 1
@@ -108,6 +113,7 @@ class Platformer(arcade.Window):
         self.player.change_x = 0
         self.player.change_y = 0
         self.physik.enable_multi_jump(self.max_jumps)
+
     def load_game(self):
         # Enter load mode (the blue screen will be drawn in on_draw)
         self.load_mode = True
@@ -115,9 +121,9 @@ class Platformer(arcade.Window):
     def save_game(self):
         # Enter save mode (the blue screen will be drawn in on_draw)
         self.save_mode = True
+
     def on_key_press(self, symbol, modifiers):
-        # If the game is not active (i.e. at the start screen or after game over),
-        # check for ENTER to restart the game.
+        # If the game is not active (e.g. at the start screen), check for ENTER to restart.
         if not self.alive:
             if symbol == arcade.key.ENTER:
                 self.restart_game()
@@ -175,6 +181,7 @@ class Platformer(arcade.Window):
             if self.physik.is_on_ladder():
                 self.player.change_y = -2
         elif symbol == arcade.key.R:
+            # When alive, pressing R respawns the player.
             self.respawn()
         elif symbol == arcade.key.T:
             self.legit = False
@@ -196,6 +203,16 @@ class Platformer(arcade.Window):
             self.load_game()
         elif symbol == arcade.key.K:
             self.camera_mode = 2 if self.camera_mode == 1 else 1
+        elif symbol == arcade.key.P:
+            print(self.player.center_x, self.player.center_y)
+        
+        elif symbol == arcade.key.ENTER and arcade.check_for_collision_with_list(self.player, self.trader):
+            if self.coins >= 6:
+                self.max_jumps = 3
+                self.coins -= 6
+            elif self.coins >= 4:
+                self.max_jumps = 2
+                self.coins -= 4
 
         self.update_horizontal_movement()
 
@@ -251,6 +268,8 @@ class Platformer(arcade.Window):
             coin.remove_from_sprite_lists()
             self.coins += 1
 
+        self.physik.enable_multi_jump(self.max_jumps)
+
     def on_draw(self):
         # If in save mode, show a blue screen with white text for saving.
         if self.save_mode:
@@ -273,7 +292,7 @@ class Platformer(arcade.Window):
         # If not alive, show the respawn screen.
         if not self.alive:
             self.clear(arcade.color.LIGHT_BLUE)
-            arcade.draw_text("Drücke R zum Respawnen",
+            arcade.draw_text("Press ENTER to Respawn",
                              self.width/2, self.height/2,
                              arcade.color.WHITE, 20,
                              anchor_x="center", anchor_y="center")
@@ -323,8 +342,20 @@ class Platformer(arcade.Window):
                                           self.tab.height,
                                           self.tab)
 
+        # Display a message when the safe point is updated.
         if arcade.check_for_collision_with_list(self.player, self.safe_points):
             arcade.draw_text("Spawnpoint Updated", 360, self.player.center_y + 50, arcade.color.WHITE, 10)
+        
+        colliding_traders = arcade.check_for_collision_with_list(self.player, self.trader)
+        if colliding_traders:
+            for trader_sprite in colliding_traders:
+                arcade.draw_texture_rectangle(
+                    trader_sprite.center_x,
+                    trader_sprite.center_y + 50,
+                    self.trade.width,
+                    self.trade.height,
+                    self.trade
+                )
 
 def main():
     Platformer()
