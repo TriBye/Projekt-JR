@@ -365,9 +365,11 @@ class Platformer(arcade.Window):
             if self.coins >= 6:
                 self.coins -= 6
                 self.max_jumps += 2
+                self.physik.enable_multi_jump(self.max_jumps)
             elif self.coins >= 4:
                 self.coins -= 4
                 self.max_jumps += 1
+                self.physik.enable_multi_jump(self.max_jumps)
         
         self.update_horizontal_movement()
 
