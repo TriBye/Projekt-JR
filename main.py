@@ -30,6 +30,7 @@ class Button:
     def is_mouse_over(self, x, y):
         return (self.left <= x <= self.left + self.width) and (self.top - self.height <= y <= self.top)
 
+# --- Main Game Class ---
 class Platformer(arcade.Window):
     def __init__(self):
         super().__init__(832, 624, "Plattformer")
@@ -50,35 +51,61 @@ class Platformer(arcade.Window):
         self.tab = arcade.load_texture("images/tab.png")
         self.show_tab = False  
         self.trade = arcade.load_texture("images/trade.png")
+        self.save_mode_image = arcade.load_texture("images/save_mode.png")
 
-        self.start_screen = True     # True when showing the start screen.
-        self.game_over = False       # True when in game-over mode.
+        self.start_screen = True     
+        self.load_screen = False     
+        self.game_over = False       
         self.start_screen_image = arcade.load_texture("images/start_screen.png")
+        self.load_screen_image = arcade.load_texture("images/load_game.png")
         self.game_over_image = arcade.load_texture("images/game_over.png")
 
-        # Create start screen buttons.
         self.start_buttons = []
-        default_btn_color = arcade.color.WHITE
-        hover_btn_color = arcade.color.GRAY
-        default_btn_color_2 = (12, 192, 223)
-        hover_btn_color_2 = (0, 151, 178)
+        default_start_color = (12, 192, 223)
+        hover_start_color = (0, 151, 178)
         border_color = arcade.color.WHITE
-        text_color = (255, 49, 49)  # #ff3131
+        text_color_start = (255, 255, 255)
         self.start_buttons.append(Button(166, 424, 500, 100, "Start Game",
-                                           default_btn_color_2, hover_btn_color_2, border_color, (255,255,255), font_size=30))
+                                           default_start_color, hover_start_color, border_color, text_color_start, font_size=30))
         self.start_buttons.append(Button(166, 299, 500, 100, "Load Game",
-                                           default_btn_color_2, hover_btn_color_2, border_color, (255,255,255), font_size=30))
+                                           default_start_color, hover_start_color, border_color, text_color_start, font_size=30))
         self.start_buttons.append(Button(166, 174, 500, 100, "Info / Credits",
-                                           default_btn_color_2, hover_btn_color_2, border_color, (255,255,255), font_size=30))
+                                           default_start_color, hover_start_color, border_color, text_color_start, font_size=30))
 
-        # Create game-over screen buttons.
         self.game_over_buttons = []
+        game_over_default_color = arcade.color.WHITE
+        game_over_hover_color = arcade.color.GRAY
+        game_over_text_color = (255, 49, 49)
         self.game_over_buttons.append(Button(266, 349, 300, 50, "Respawn (R)",
-                                               default_btn_color, hover_btn_color, border_color, text_color, font_size=20))
+                                               game_over_default_color, game_over_hover_color, border_color, game_over_text_color, font_size=20))
         self.game_over_buttons.append(Button(266, 280, 300, 50, "Menu",
-                                               default_btn_color, hover_btn_color, border_color, text_color, font_size=20))
+                                               game_over_default_color, game_over_hover_color, border_color, game_over_text_color, font_size=20))
 
-        # Last valid respawn position.
+        # Create load screen buttons.
+        self.load_buttons = []
+        self.delete_buttons = []
+        for i in range(5):
+            center_y = 536.5 - i * 100
+            load_center_x = 550 + 37.5   # 587.5
+            delete_center_x = 650 + 37.5 # 687.5
+            load_left = load_center_x - 37.5
+            delete_left = delete_center_x - 37.5
+            self.load_buttons.append(Button(load_left, center_y + 37.5, 75, 75, f"LOAD",
+                                             arcade.color.GREEN, arcade.color.DARK_GREEN, arcade.color.WHITE, arcade.color.WHITE, font_size=10))
+            self.delete_buttons.append(Button(delete_left, center_y + 37.5, 75, 75, f"DELETE",
+                                               arcade.color.RED, arcade.color.DARK_RED, arcade.color.WHITE, arcade.color.WHITE, font_size=10))
+        # Create save mode buttons.
+        self.save_buttons = []
+        # We'll place these buttons at the same positions as the delete buttons.
+        for i in range(5):
+            center_y = 536.5 - i * 100
+            save_center_x = 650 + 37.5  # same as delete buttons: 687.5
+            save_left = save_center_x - 37.5
+            # Label is "SAVE", font size 10.
+            self.save_buttons.append(Button(save_left, center_y + 37.5, 75, 75, "SAVE",
+                                              arcade.color.GREEN, arcade.color.DARK_GREEN, arcade.color.WHITE, arcade.color.WHITE, font_size=10))
+        # End of button creation.
+
         self.last_x = self.player.center_x
         self.last_y = self.player.center_y
 
@@ -88,7 +115,6 @@ class Platformer(arcade.Window):
         self.coins = 0
         self.coin_spawns = self.scene.get_sprite_list("Coins")
 
-        # Trader sprite list (from the tilemap layer "Trader").
         self.trader = self.scene.get_sprite_list("Trader")
 
         self.lives = 3
@@ -142,9 +168,12 @@ class Platformer(arcade.Window):
         self.last_y = self.player.center_y
         self.physik.enable_multi_jump(self.max_jumps)
         self.keys_pressed.clear()
+        self.start_screen = False
+        self.load_screen = False
 
     def respawn(self):
-        """Respawn the player at the last safe point (without reloading the scene)."""
+        """Respawn the player at the last safe point and reset lives to 3."""
+        self.lives = 3
         self.player.center_x = self.safe_point[0]
         self.player.center_y = self.safe_point[1]
         self.player.change_x = 0
@@ -156,12 +185,33 @@ class Platformer(arcade.Window):
         self.load_mode = True
 
     def save_game_mode(self):
+        # Build save buttons for slots without a save file.
+        if not os.path.exists("saves"):
+            os.makedirs("saves")
+        self.save_buttons = []
+        for i in range(5):
+            filename = os.path.join("saves", f"core.txt{i+1}")
+            if not os.path.exists(filename):
+                center_y = 536.5 - i * 100
+                # Same x as delete buttons.
+                save_center_x = 650 + 37.5  # 687.5
+                save_left = save_center_x - 37.5
+                self.save_buttons.append(Button(save_left, center_y + 37.5, 75, 75, "SAVE",
+                                                  arcade.color.GREEN, arcade.color.DARK_GREEN, arcade.color.WHITE, arcade.color.WHITE, font_size=10))
         self.save_mode = True
 
-    # --- Mouse Event Handlers for Start Screen and Game Over Screen ---
+    # --- Mouse Event Handlers for Start Screen, Load Screen, Save Mode, and Game Over Screen ---
     def on_mouse_motion(self, x, y, dx, dy):
         if self.start_screen:
             for button in self.start_buttons:
+                button.is_hovered = button.is_mouse_over(x, y)
+        elif self.load_screen:
+            for button in self.load_buttons:
+                button.is_hovered = button.is_mouse_over(x, y)
+            for button in self.delete_buttons:
+                button.is_hovered = button.is_mouse_over(x, y)
+        elif self.save_mode:
+            for button in self.save_buttons:
                 button.is_hovered = button.is_mouse_over(x, y)
         elif self.game_over:
             for button in self.game_over_buttons:
@@ -174,13 +224,58 @@ class Platformer(arcade.Window):
                     if btn.text == "Start Game":
                         self.start_screen = False
                         self.alive = True
+                        self.game_over = False
                         self.restart_game()
                     elif btn.text == "Load Game":
-                        self.start_screen_image = arcade.load_texture("images/load_game.png")
-                        self.start_buttons = []  # Remove buttons so only image is displayed.
+                        self.load_screen = True
+                        self.start_screen = False
                     elif btn.text == "Info / Credits":
-                        # You may implement an info screen here.
+                        # Implement info/credits screen if desired.
                         pass
+                    break
+        elif self.load_screen:
+            # Check load buttons.
+            for i, btn in enumerate(self.load_buttons):
+                if btn.is_mouse_over(x, y):
+                    filename = os.path.join("saves", f"core.txt{i+1}")
+                    if os.path.exists(filename):
+                        try:
+                            with open(filename, "r", encoding="utf-8") as datei:
+                                lines = datei.readlines()
+                                self.coins = int(lines[0].strip())
+                                self.lives = int(lines[1].strip())
+                                self.max_jumps = int(lines[2].strip())
+                                self.jumps = self.max_jumps
+                                self.player.center_x = float(lines[3].strip())
+                                self.player.center_y = float(lines[4].strip())
+                                self.legit = lines[5].strip() == "True"
+                                self.physik.enable_multi_jump(self.max_jumps)
+                        except Exception:
+                            pass
+                    self.load_screen = False
+                    self.restart_game()
+                    break
+
+            for i, btn in enumerate(self.delete_buttons):
+                if btn.is_mouse_over(x, y):
+                    filename = os.path.join("saves", f"core.txt{i+1}")
+                    if os.path.exists(filename):
+                        os.remove(filename)
+                    self.load_screen = False
+                    break
+                
+        elif self.save_mode:
+            for i, btn in enumerate(self.save_buttons):
+                if btn.is_mouse_over(x, y):
+                    filename = os.path.join("saves", f"core.txt{i+1}")
+                    with open(filename, "w", encoding="utf-8") as datei:
+                        datei.write(f"{self.coins}\n")
+                        datei.write(f"{self.lives}\n")
+                        datei.write(f"{self.max_jumps}\n")
+                        datei.write(f"{self.player.center_x}\n")
+                        datei.write(f"{self.player.center_y}\n")
+                        datei.write(f"{self.legit}\n")
+                    self.save_mode = False
                     break
         elif self.game_over:
             for btn in self.game_over_buttons:
@@ -189,6 +284,7 @@ class Platformer(arcade.Window):
                         self.respawn()
                         self.alive = True
                         self.game_over = False
+
                     elif btn.text == "Menu":
                         self.start_screen = True
                         self.game_over = False
@@ -200,7 +296,15 @@ class Platformer(arcade.Window):
         if self.start_screen:
             return
 
-        # If game over, allow respawn by pressing R.
+        # If on the load screen, ignore key presses.
+        if self.load_screen:
+            self.load_screen = False
+
+        # If in save mode, ignore key presses.
+        if self.save_mode:
+            return
+
+        # If in game over mode, allow respawn by pressing R.
         if self.game_over:
             if symbol == arcade.key.R:
                 self.respawn()
@@ -208,51 +312,20 @@ class Platformer(arcade.Window):
                 self.game_over = False
             return
 
-        # If the game is not active (but not in start screen), check for ENTER to restart.
-        if not self.alive:
+        # If the game is not active (but not on start screen), check for ENTER to restart.
+        '''if not self.alive:
             if symbol == arcade.key.ENTER:
                 self.restart_game()
+            return'''
+
+        # --- Save Mode via Key (optional) ---
+        if symbol == arcade.key.LCTRL:
+            self.save_game_mode()
             return
 
-        # --- Save Mode ---
-        if self.save_mode:
-            if not os.path.exists("saves"):
-                os.makedirs("saves")
-            if arcade.key.KEY_0 <= symbol <= arcade.key.KEY_9:
-                digit = symbol - arcade.key.KEY_0
-                filename = os.path.join("saves", f"core.txt{digit}")
-                with open(filename, "w", encoding="utf-8") as datei:
-                    datei.write(f"{self.coins}\n")
-                    datei.write(f"{self.lives}\n")
-                    datei.write(f"{self.max_jumps}\n")
-                    datei.write(f"{self.player.center_x}\n")
-                    datei.write(f"{self.player.center_y}\n")
-                    datei.write(f"{self.legit}\n")
-                self.save_mode = False
-            return
-
-        # --- Load Mode ---
-        if self.load_mode:
-            if not os.path.exists("saves"):
-                self.load_mode = False
-            else:
-                if arcade.key.KEY_0 <= symbol <= arcade.key.KEY_9:
-                    digit = symbol - arcade.key.KEY_0
-                    filename = os.path.join("saves", f"core.txt{digit}")
-                    try:
-                        with open(filename, "r", encoding="utf-8") as datei:
-                            lines = datei.readlines()
-                        self.coins = int(lines[0].strip())
-                        self.lives = int(lines[1].strip())
-                        self.max_jumps = int(lines[2].strip())
-                        self.jumps = self.max_jumps
-                        self.player.center_x = float(lines[3].strip())
-                        self.player.center_y = float(lines[4].strip())
-                        self.legit = lines[5].strip() == "True"
-                        self.physik.enable_multi_jump(self.max_jumps)
-                    except Exception as e:
-                        print("Error loading game:", e)
-                    self.load_mode = False
+        # --- Load Mode via Key (optional) ---
+        if symbol == arcade.key.LALT:
+            self.load_game_mode()
             return
 
         self.keys_pressed[symbol] = True
@@ -269,6 +342,7 @@ class Platformer(arcade.Window):
                 self.player.change_y = -2
         elif symbol == arcade.key.R:
             self.respawn()
+            self.lives = 3
         elif symbol == arcade.key.T:
             self.legit = False
             self.player.center_x = self.last_x
@@ -283,14 +357,17 @@ class Platformer(arcade.Window):
             self.scene = arcade.Scene.from_tilemap(self.tilemap)
         elif symbol == arcade.key.MINUS:
             self.scene = arcade.Scene.from_tilemap(self.tilemap_2)
-        elif symbol == arcade.key.LCTRL:
-            self.save_game_mode()
-        elif symbol == arcade.key.LALT:
-            self.load_game_mode()
         elif symbol == arcade.key.K:
             self.camera_mode = 2 if self.camera_mode == 1 else 1
         elif symbol == arcade.key.P:
             print(self.player.center_x, self.player.center_y)
+        elif symbol == arcade.key.ENTER and arcade.check_for_collision_with_list(self.player, self.trader):
+            if self.coins >= 6:
+                self.coins -= 6
+                self.max_jumps += 2
+            elif self.coins >= 4:
+                self.coins -= 4
+                self.max_jumps += 1
         
         self.update_horizontal_movement()
 
@@ -317,7 +394,7 @@ class Platformer(arcade.Window):
             self.player.change_x = 0
 
     def on_update(self, delta_time):
-        if self.start_screen:
+        if self.start_screen or self.load_screen or self.save_mode:
             return
         if not self.alive:
             return
@@ -333,7 +410,8 @@ class Platformer(arcade.Window):
         if self.player.center_y <= -10:
             if self.lives > 1:
                 self.lives -= 1
-                self.respawn()
+                self.player.center_x = self.safe_point[0]
+                self.player.center_y = self.safe_point[1]
             else:
                 self.alive = False
                 self.game_over = True
@@ -347,7 +425,6 @@ class Platformer(arcade.Window):
             self.coins += 1
 
     def on_draw(self):
-        # Draw Start Screen if active.
         if self.start_screen:
             self.clear()
             arcade.draw_texture_rectangle(self.width/2, self.height/2, self.width, self.height, self.start_screen_image)
@@ -355,31 +432,29 @@ class Platformer(arcade.Window):
                 btn.draw()
             return
 
-        # Draw Save Mode screen.
+        if self.load_screen:
+            self.clear()
+            arcade.draw_texture_rectangle(self.width/2, self.height/2, self.width, self.height, self.load_screen_image)
+            for btn in self.load_buttons:
+                btn.draw()
+            for btn in self.delete_buttons:
+                btn.draw()
+            return
+
         if self.save_mode:
-            self.clear(arcade.color.LIGHT_BLUE)
-            arcade.draw_text("Select a Save Slot to Save!",
-                             self.width/2, self.height/2,
-                             arcade.color.WHITE, 20, anchor_x="center", anchor_y="center")
+            self.clear()
+            arcade.draw_texture_rectangle(self.width/2, self.height/2, self.width, self.height, self.save_mode_image)
+            for btn in self.save_buttons:
+                btn.draw()
             return
 
-        # Draw Load Mode screen.
-        if self.load_mode:
-            self.clear(arcade.color.LIGHT_BLUE)
-            arcade.draw_text("Select a Save Slot to Load!",
-                             self.width/2, self.height/2,
-                             arcade.color.WHITE, 20, anchor_x="center", anchor_y="center")
-            return
-
-        # Draw Game Over screen if not alive and game_over is True.
-        if not self.alive and hasattr(self, "game_over") and self.game_over:
+        if not self.alive and self.game_over:
             self.clear()
             arcade.draw_texture_rectangle(self.width/2, self.height/2, self.width, self.height, self.game_over_image)
             for btn in self.game_over_buttons:
                 btn.draw()
             return
 
-        # Normal game drawing.
         self.clear()
         if self.camera_mode == 1:
             left = max(0, self.player.center_x - self.width // 2)
@@ -403,16 +478,12 @@ class Platformer(arcade.Window):
 
         arcade.set_viewport(0, self.width, 0, self.height)
         fps_text = f"FPS: {self.fps:.1f}"
-        arcade.draw_text(fps_text,
-                         self.width/2,
-                         self.height - 20,
-                         arcade.color.BLACK,
-                         14, anchor_x="center")
+        arcade.draw_text(fps_text, self.width/2, self.height - 20,
+                         arcade.color.BLACK, 14, anchor_x="center")
 
         arcade.draw_rectangle_filled(80, 600, 50*self.lives, 30, arcade.color.RED)
         arcade.draw_rectangle_outline(80, 600, 150, 30, arcade.color.BLACK, 3)
-        arcade.draw_text(str(self.lives),
-                         75, 590, arcade.color.WHITE, 20)
+        arcade.draw_text(str(self.lives), 75, 590, arcade.color.WHITE, 20)
         
         arcade.draw_text(f"{self.coins}", 800, 600, arcade.color.WHITE, 20)
 
@@ -426,11 +497,7 @@ class Platformer(arcade.Window):
         arcade.draw_rectangle_filled(bar_center_x, bar_center_y, filled_width, bar_height, arcade.color.LIGHT_STEEL_BLUE)
 
         if self.show_tab:
-            arcade.draw_texture_rectangle(self.width/2,
-                                          self.height/2,
-                                          self.tab.width,
-                                          self.tab.height,
-                                          self.tab)
+            arcade.draw_texture_rectangle(self.width/2, self.height/2, self.tab.width, self.tab.height, self.tab)
 
         if arcade.check_for_collision_with_list(self.player, self.safe_points):
             arcade.draw_text("Spawnpoint Updated", 360, self.player.center_y + 50, arcade.color.WHITE, 10)
@@ -445,42 +512,6 @@ class Platformer(arcade.Window):
                     self.trade.height,
                     self.trade
                 )
-
-    def on_mouse_motion(self, x, y, dx, dy):
-        if self.start_screen:
-            for button in self.start_buttons:
-                button.is_hovered = button.is_mouse_over(x, y)
-        elif not self.alive and hasattr(self, "game_over") and self.game_over:
-            for button in self.game_over_buttons:
-                button.is_hovered = button.is_mouse_over(x, y)
-
-    def on_mouse_press(self, x, y, button, modifiers):
-        if self.start_screen:
-            for btn in self.start_buttons:
-                if btn.is_mouse_over(x, y):
-                    if btn.text == "Start Game":
-                        self.start_screen = False
-                        self.alive = True
-                        self.game_over = False
-                        self.restart_game()
-                    elif btn.text == "Load Game":
-                        self.load_mode = True
-                        self.start_screen = False
-                    elif btn.text == "Info / Credits":
-                        pass
-                    break
-        elif not self.alive and hasattr(self, "game_over") and self.game_over:
-            for btn in self.game_over_buttons:
-                if btn.is_mouse_over(x, y):
-                    if btn.text == "Respawn (R)":
-                        self.respawn()
-                        self.alive = True
-                        self.game_over = False
-                    elif btn.text == "Menu":
-                        self.start_screen = True
-                        self.game_over = False
-                        self.alive = False
-                    break
 
 def main():
     Platformer()
