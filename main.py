@@ -262,7 +262,6 @@ class Platformer(arcade.Window):
                     filename = os.path.join("saves", f"core.txt{i+1}")
                     if os.path.exists(filename):
                         os.remove(filename)
-                    self.load_screen = False
                     break
                 
         elif self.save_mode:
