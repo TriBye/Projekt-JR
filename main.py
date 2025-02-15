@@ -81,30 +81,25 @@ class Platformer(arcade.Window):
         self.game_over_buttons.append(Button(266, 280, 300, 50, "Menu",
                                                game_over_default_color, game_over_hover_color, border_color, game_over_text_color, font_size=20))
 
-        # Create load screen buttons.
         self.load_buttons = []
         self.delete_buttons = []
         for i in range(5):
             center_y = 536.5 - i * 100
-            load_center_x = 550 + 37.5   # 587.5
-            delete_center_x = 650 + 37.5 # 687.5
+            load_center_x = 550 + 37.5  
+            delete_center_x = 650 + 37.5 
             load_left = load_center_x - 37.5
             delete_left = delete_center_x - 37.5
             self.load_buttons.append(Button(load_left, center_y + 37.5, 75, 75, f"LOAD",
                                              arcade.color.GREEN, arcade.color.DARK_GREEN, arcade.color.WHITE, arcade.color.WHITE, font_size=10))
             self.delete_buttons.append(Button(delete_left, center_y + 37.5, 75, 75, f"DELETE",
                                                arcade.color.RED, arcade.color.DARK_RED, arcade.color.WHITE, arcade.color.WHITE, font_size=10))
-        # Create save mode buttons.
         self.save_buttons = []
-        # We'll place these buttons at the same positions as the delete buttons.
         for i in range(5):
             center_y = 536.5 - i * 100
-            save_center_x = 650 + 37.5  # same as delete buttons: 687.5
+            save_center_x = 650 + 37.5 
             save_left = save_center_x - 37.5
-            # Label is "SAVE", font size 10.
             self.save_buttons.append(Button(save_left, center_y + 37.5, 75, 75, "SAVE",
                                               arcade.color.GREEN, arcade.color.DARK_GREEN, arcade.color.WHITE, arcade.color.WHITE, font_size=10))
-        # End of button creation.
 
         self.last_x = self.player.center_x
         self.last_y = self.player.center_y
@@ -189,7 +184,7 @@ class Platformer(arcade.Window):
         self.save_buttons = []
         for i in range(5):
             filename = os.path.join("saves", f"core.txt{i+1}")
-            if not os.path.exists(filename):
+            if not os.path.exists(filename) or i == 0:
                 center_y = 536.5 - i * 100
                 save_center_x = 650 + 37.5
                 save_left = save_center_x - 37.5
