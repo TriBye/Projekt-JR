@@ -172,7 +172,6 @@ class Platformer(arcade.Window):
         self.load_screen = False
 
     def respawn(self):
-        """Respawn the player at the last safe point and reset lives to 3."""
         self.lives = 3
         self.player.center_x = self.safe_point[0]
         self.player.center_y = self.safe_point[1]
@@ -180,12 +179,11 @@ class Platformer(arcade.Window):
         self.player.change_y = 0
         self.physik.enable_multi_jump(self.max_jumps)
         self.jumps = self.max_jumps
+        self.alive = True
 
     def load_game_mode(self):
         self.load_mode = True
-
     def save_game_mode(self):
-        # Build save buttons for slots without a save file.
         if not os.path.exists("saves"):
             os.makedirs("saves")
         self.save_buttons = []
@@ -193,14 +191,11 @@ class Platformer(arcade.Window):
             filename = os.path.join("saves", f"core.txt{i+1}")
             if not os.path.exists(filename):
                 center_y = 536.5 - i * 100
-                # Same x as delete buttons.
-                save_center_x = 650 + 37.5  # 687.5
+                save_center_x = 650 + 37.5
                 save_left = save_center_x - 37.5
                 self.save_buttons.append(Button(save_left, center_y + 37.5, 75, 75, "SAVE",
                                                   arcade.color.GREEN, arcade.color.DARK_GREEN, arcade.color.WHITE, arcade.color.WHITE, font_size=10))
         self.save_mode = True
-
-    # --- Mouse Event Handlers for Start Screen, Load Screen, Save Mode, and Game Over Screen ---
     def on_mouse_motion(self, x, y, dx, dy):
         if self.start_screen:
             for button in self.start_buttons:
@@ -253,7 +248,7 @@ class Platformer(arcade.Window):
                         except Exception:
                             pass
                     self.load_screen = False
-                    self.restart_game()
+                    self.respawn()
                     break
 
             for i, btn in enumerate(self.delete_buttons):
@@ -311,12 +306,6 @@ class Platformer(arcade.Window):
                 self.alive = True
                 self.game_over = False
             return
-
-        # If the game is not active (but not on start screen), check for ENTER to restart.
-        '''if not self.alive:
-            if symbol == arcade.key.ENTER:
-                self.restart_game()
-            return'''
 
         # --- Save Mode via Key (optional) ---
         if symbol == arcade.key.LCTRL:
