@@ -22,8 +22,8 @@ class Button:
         center_x = self.left + self.width / 2
         center_y = self.top - self.height / 2
         color = self.hover_color if self.is_hovered else self.default_color
-        arcade.draw_rect_filled(center_x, center_y, self.width, self.height, color)
-        arcade.draw_rect_outline(center_x, center_y, self.width, self.height, self.border_color, 2)
+        arcade.draw_rectangle_filled(center_x, center_y, self.width, self.height, color)
+        arcade.draw_rectangle_outline(center_x, center_y, self.width, self.height, self.border_color, 2)
         arcade.draw_text(self.text, center_x, center_y, self.text_color,
                          self.font_size, anchor_x="center", anchor_y="center")
 
@@ -425,14 +425,14 @@ class Platformer(arcade.Window):
     def on_draw(self):
         if self.start_screen:
             self.clear()
-            arcade.draw_texture_rect(self.width/2, self.height/2, self.width, self.height, self.start_screen_image)
+            arcade.draw_texture_rectangle(self.width/2, self.height/2, self.width, self.height, self.start_screen_image)
             for btn in self.start_buttons:
                 btn.draw()
             return
 
         if self.load_screen:
             self.clear()
-            arcade.draw_texture_rect(self.width/2, self.height/2, self.width, self.height, self.load_screen_image)
+            arcade.draw_texture_rectangle(self.width/2, self.height/2, self.width, self.height, self.load_screen_image)
             for btn in self.load_buttons:
                 btn.draw()
             for btn in self.delete_buttons:
@@ -441,14 +441,14 @@ class Platformer(arcade.Window):
 
         if self.save_mode:
             self.clear()
-            arcade.draw_texture_rect(self.width/2, self.height/2, self.width, self.height, self.save_mode_image)
+            arcade.draw_texture_rectangle(self.width/2, self.height/2, self.width, self.height, self.save_mode_image)
             for btn in self.save_buttons:
                 btn.draw()
             return
 
         if not self.alive and self.game_over:
             self.clear()
-            arcade.draw_texture_rect(self.width/2, self.height/2, self.width, self.height, self.game_over_image)
+            arcade.draw_texture_rectangle(self.width/2, self.height/2, self.width, self.height, self.game_over_image)
             for btn in self.game_over_buttons:
                 btn.draw()
             return
@@ -479,8 +479,8 @@ class Platformer(arcade.Window):
         arcade.draw_text(fps_text, self.width/2, self.height - 20,
                          arcade.color.BLACK, 14, anchor_x="center")
 
-        arcade.draw_rect_filled(80, 600, 50*self.lives, 30, arcade.color.RED)
-        arcade.draw_rect_outline(80, 600, 150, 30, arcade.color.BLACK, 3)
+        arcade.draw_rectangle_filled(80, 600, 50*self.lives, 30, arcade.color.RED)
+        arcade.draw_rectangle_outline(80, 600, 150, 30, arcade.color.BLACK, 3)
         arcade.draw_text(str(self.lives), 75, 590, arcade.color.WHITE, 20)
         
         arcade.draw_text(f"{self.coins}", 800, 600, arcade.color.WHITE, 20)
@@ -489,13 +489,13 @@ class Platformer(arcade.Window):
         bar_height = 30
         bar_center_x = 416
         bar_center_y = 50
-        arcade.draw_rect_outline(bar_center_x, bar_center_y, outline_width, bar_height, arcade.color.WHITE, 2)
+        arcade.draw_rectangle_outline(bar_center_x, bar_center_y, outline_width, bar_height, arcade.color.WHITE, 2)
         fill_ratio = self.jumps / self.max_jumps if self.max_jumps > 0 else 0
         filled_width = outline_width * fill_ratio
-        arcade.draw_rect_filled(bar_center_x, bar_center_y, filled_width, bar_height, arcade.color.LIGHT_STEEL_BLUE)
+        arcade.draw_rectangle_filled(bar_center_x, bar_center_y, filled_width, bar_height, arcade.color.LIGHT_STEEL_BLUE)
 
         if self.show_tab:
-            arcade.draw_texture_rect(self.width/2, self.height/2, self.tab.width, self.tab.height, self.tab)
+            arcade.draw_texture_rectangle(self.width/2, self.height/2, self.tab.width, self.tab.height, self.tab)
 
         if arcade.check_for_collision_with_list(self.player, self.safe_points):
             arcade.draw_text("Spawnpoint Updated", 360, self.player.center_y + 50, arcade.color.WHITE, 10)
@@ -503,7 +503,7 @@ class Platformer(arcade.Window):
         colliding_traders = arcade.check_for_collision_with_list(self.player, self.trader)
         if colliding_traders:
             for trader_sprite in colliding_traders:
-                arcade.draw_texture_rect(
+                arcade.draw_texture_rectangle(
                     trader_sprite.center_x,
                     trader_sprite.center_y + 50,
                     self.trade.width,
