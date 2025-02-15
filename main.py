@@ -517,3 +517,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#add a cancel option for save or load mode
+#add a warning when no savong files are free
