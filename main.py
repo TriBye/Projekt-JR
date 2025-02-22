@@ -230,6 +230,15 @@ class Platformer(arcade.Window):
                         pass
                     break
         elif self.load_screen:
+            '''for i in range(5):
+                filename = os.path.join("saves", f"core.txt{i+1}")
+                if os.path.exists(filename):
+                    try:
+                        with open(filename, "r", encoding="utf-8") as datei:
+                            lines = datei.readlines()
+                            arcade.draw_text(f"Coins: {int(lines[0].strip())}", 230, 536.5 - i * 100 + 37.5)
+                    except Exception:
+                        pass'''
             for i, btn in enumerate(self.load_buttons):
                 if btn.is_mouse_over(x, y):
                     filename = os.path.join("saves", f"core.txt{i+1}")
@@ -398,7 +407,7 @@ class Platformer(arcade.Window):
             self.last_y = self.player.center_y
             self.jumps = self.max_jumps
 
-        if self.player.center_y <= -10:
+        if self.player.center_y <= -10 and self.player.center_x < 3300:
             if self.lives > 1:
                 self.lives -= 1
                 self.player.center_x = self.safe_point[0]
@@ -406,7 +415,9 @@ class Platformer(arcade.Window):
             else:
                 self.alive = False
                 self.game_over = True
-
+        elif self.player.center_y <= -10 and self.player.center_x >= 3300:
+            self.dimension += 1 
+        
         if arcade.check_for_collision_with_list(self.player, self.safe_points):
             self.safe_point = [self.player.center_x, self.player.center_y]
 
@@ -512,3 +523,4 @@ if __name__ == "__main__":
     main()
 
 #add a warning when no saving files are free
+#add load file info
