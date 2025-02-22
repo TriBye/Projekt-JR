@@ -82,6 +82,7 @@ class Platformer(arcade.Window):
         
         self.load_buttons = []
         self.delete_buttons = []
+        self.load_text = []
         for i in range(5):
             center_y = 536.5 - i * 100
             load_center_x = 550 + 37.5  
