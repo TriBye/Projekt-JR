@@ -2,7 +2,6 @@ import arcade
 import time
 import os
 
-# --- Button Class Definition ---
 class Button:
     def __init__(self, left, top, width, height, text,
                  default_color, hover_color, border_color, text_color, font_size=20):
@@ -30,7 +29,6 @@ class Button:
     def is_mouse_over(self, x, y):
         return (self.left <= x <= self.left + self.width) and (self.top - self.height <= y <= self.top)
 
-# --- Main Game Class ---
 class Platformer(arcade.Window):
     def __init__(self):
         super().__init__(832, 624, "Plattformer")
@@ -65,6 +63,7 @@ class Platformer(arcade.Window):
         hover_start_color = (0, 151, 178)
         border_color = arcade.color.WHITE
         text_color_start = (255, 255, 255)
+
         self.start_buttons.append(Button(166, 424, 500, 100, "Start Game",
                                            default_start_color, hover_start_color, border_color, text_color_start, font_size=30))
         self.start_buttons.append(Button(166, 299, 500, 100, "Load Game",
@@ -80,31 +79,26 @@ class Platformer(arcade.Window):
                                                game_over_default_color, game_over_hover_color, border_color, game_over_text_color, font_size=20))
         self.game_over_buttons.append(Button(266, 280, 300, 50, "Menu",
                                                game_over_default_color, game_over_hover_color, border_color, game_over_text_color, font_size=20))
-
-        # Create load screen buttons.
+        
         self.load_buttons = []
         self.delete_buttons = []
         for i in range(5):
             center_y = 536.5 - i * 100
-            load_center_x = 550 + 37.5   # 587.5
-            delete_center_x = 650 + 37.5 # 687.5
+            load_center_x = 550 + 37.5  
+            delete_center_x = 650 + 37.5 
             load_left = load_center_x - 37.5
             delete_left = delete_center_x - 37.5
             self.load_buttons.append(Button(load_left, center_y + 37.5, 75, 75, f"LOAD",
                                              arcade.color.GREEN, arcade.color.DARK_GREEN, arcade.color.WHITE, arcade.color.WHITE, font_size=10))
             self.delete_buttons.append(Button(delete_left, center_y + 37.5, 75, 75, f"DELETE",
                                                arcade.color.RED, arcade.color.DARK_RED, arcade.color.WHITE, arcade.color.WHITE, font_size=10))
-        # Create save mode buttons.
         self.save_buttons = []
-        # We'll place these buttons at the same positions as the delete buttons.
         for i in range(5):
             center_y = 536.5 - i * 100
-            save_center_x = 650 + 37.5  # same as delete buttons: 687.5
+            save_center_x = 650 + 37.5 
             save_left = save_center_x - 37.5
-            # Label is "SAVE", font size 10.
             self.save_buttons.append(Button(save_left, center_y + 37.5, 75, 75, "SAVE",
                                               arcade.color.GREEN, arcade.color.DARK_GREEN, arcade.color.WHITE, arcade.color.WHITE, font_size=10))
-        # End of button creation.
 
         self.last_x = self.player.center_x
         self.last_y = self.player.center_y
@@ -170,6 +164,7 @@ class Platformer(arcade.Window):
         self.keys_pressed.clear()
         self.start_screen = False
         self.load_screen = False
+        self.save_screen = False
 
     def respawn(self):
         self.lives = 3
@@ -201,7 +196,7 @@ class Platformer(arcade.Window):
                 new_button.slot = i + 1
                 self.save_buttons.append(new_button)
 
-        self.save_mode = True
+        self.save_mode = True 
     def on_mouse_motion(self, x, y, dx, dy):
         if self.start_screen:
             for button in self.start_buttons:
@@ -231,11 +226,9 @@ class Platformer(arcade.Window):
                         self.load_screen = True
                         self.start_screen = False
                     elif btn.text == "Info / Credits":
-                        # Implement info/credits screen if desired.
                         pass
                     break
         elif self.load_screen:
-            # Check load buttons.
             for i, btn in enumerate(self.load_buttons):
                 if btn.is_mouse_over(x, y):
                     filename = os.path.join("saves", f"core.txt{i+1}")
@@ -255,6 +248,7 @@ class Platformer(arcade.Window):
                             pass
                     self.load_screen = False
                     self.alive = True
+                    self.save_screen = False
                     break
 
             for i, btn in enumerate(self.delete_buttons):
@@ -262,8 +256,6 @@ class Platformer(arcade.Window):
                     filename = os.path.join("saves", f"core.txt{i+1}")
                     if os.path.exists(filename):
                         os.remove(filename)
-                    self.load_screen = False
-                    break
                 
         elif self.save_mode:
             for btn in self.save_buttons:
@@ -294,19 +286,21 @@ class Platformer(arcade.Window):
                     break
 
     def on_key_press(self, symbol, modifiers):
-        # If on the start screen, ignore normal key presses.
         if self.start_screen:
             return
 
-        # If on the load screen, ignore key presses.
         if self.load_screen:
-            self.load_screen = False
-
-        # If in save mode, ignore key presses.
-        if self.save_mode:
+            if symbol == arcade.key.ESCAPE:
+                self.load_screen = False
+                self.start_screen = True
             return
 
-        # If in game over mode, allow respawn by pressing R.
+        if self.save_mode:
+            if symbol == arcade.key.ESCAPE:
+                self.save_screen = False
+                self.alive = True
+            return
+
         if self.game_over:
             if symbol == arcade.key.R:
                 self.respawn()
@@ -314,12 +308,10 @@ class Platformer(arcade.Window):
                 self.game_over = False
             return
 
-        # --- Save Mode via Key (optional) ---
         if symbol == arcade.key.LCTRL:
             self.save_game_mode()
             return
 
-        # --- Load Mode via Key (optional) ---
         if symbol == arcade.key.LALT:
             self.load_game_mode()
             return
@@ -518,5 +510,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-#add a cancel option for save or load mode
-#add a warning when no savong files are free
+#add a warning when no saving files are free
