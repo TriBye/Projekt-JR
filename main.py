@@ -29,16 +29,24 @@ class Button:
     def is_mouse_over(self, x, y):
         return (self.left <= x <= self.left + self.width) and (self.top - self.height <= y <= self.top)
 
+class Tilemap:
+    def __init__(self, tile_map, background):
+        pass
+
 class Platformer(arcade.Window):
     def __init__(self):
         super().__init__(832, 624, "Plattformer")
-        arcade.set_background_color(arcade.color.SKY_BLUE)
 
         self.tilemap = arcade.load_tilemap("karte.tmx")
         self.tilemap_2 = arcade.load_tilemap("karte_2.tmx")
         self.scene = arcade.Scene.from_tilemap(self.tilemap)
 
-        self.player = arcade.Sprite("images/player.png", scale=1.6)
+        # Preload player textures once
+        self.player_texture = arcade.load_texture("images/player.png")
+        self.player_back_texture = arcade.load_texture("images/player-back.png")
+        # Create the sprite without a filename, then assign the preloaded texture.
+        self.player = arcade.Sprite(scale=1.6)
+        self.player.texture = self.player_texture
         self.player.center_x = self.width // 2
         self.player.center_y = 400
         self.scene.add_sprite("Spieler", self.player)
@@ -176,8 +184,41 @@ class Platformer(arcade.Window):
         self.jumps = self.max_jumps
         self.alive = True
 
+    def switch_tilemap(self, dimension):
+        tilemap_list = ["karte.tmx", "karte_2.tmx"]
+
+        self.player.center_x = self.width // 2
+
+        if not dimension > len(tilemap_list) and dimension > 0:
+            tile_map = arcade.load_tilemap(tilemap_list[dimension-1])
+            self.scene = arcade.Scene.from_tilemap(tile_map)
+        else:
+            return
+        
+        self.scene.add_sprite("Spieler", self.player)
+        
+        platforms = self.scene.get_sprite_list("Tile Layer 1")
+        platforms.enable_spatial_hashing()
+        self.safe_points = self.scene.get_sprite_list("Safe Points")
+        try:
+            self.coin_spawns = self.scene.get_sprite_list("Coins")
+            self.trader = self.scene.get_sprite_list("Trader")
+        except:
+            pass
+
+        if self.dimension == 2:
+            self.player.center_y = self.height - 100
+
+        self.physik = arcade.PhysicsEnginePlatformer(
+            self.player,
+            platforms,
+            gravity_constant=0.35,
+            ladders=self.scene.get_sprite_list("leiter")
+        )
+
     def load_game_mode(self):
         self.load_mode = True
+
     def save_game_mode(self):
         if not os.path.exists("saves"):
             os.makedirs("saves")
@@ -197,6 +238,7 @@ class Platformer(arcade.Window):
                 self.save_buttons.append(new_button)
 
         self.save_mode = True 
+
     def on_mouse_motion(self, x, y, dx, dy):
         if self.start_screen:
             for button in self.start_buttons:
@@ -229,15 +271,6 @@ class Platformer(arcade.Window):
                         pass
                     break
         elif self.load_screen:
-            '''for i in range(5):
-                filename = os.path.join("saves", f"core.txt{i+1}")
-                if os.path.exists(filename):
-                    try:
-                        with open(filename, "r", encoding="utf-8") as datei:
-                            lines = datei.readlines()
-                            arcade.draw_text(f"Coins: {int(lines[0].strip())}", 230, 536.5 - i * 100 + 37.5)
-                    except Exception:
-                        pass'''
             for i, btn in enumerate(self.load_buttons):
                 if btn.is_mouse_over(x, y):
                     filename = os.path.join("saves", f"core.txt{i+1}")
@@ -287,7 +320,6 @@ class Platformer(arcade.Window):
                         self.respawn()
                         self.alive = True
                         self.game_over = False
-
                     elif btn.text == "Menu":
                         self.start_screen = True
                         self.game_over = False
@@ -351,9 +383,11 @@ class Platformer(arcade.Window):
         elif symbol == arcade.key.TAB:
             self.show_tab = not self.show_tab
         elif symbol == arcade.key.PLUS:
-            self.scene = arcade.Scene.from_tilemap(self.tilemap)
+            self.dimension += 1
+            self.switch_tilemap(self.dimension)
         elif symbol == arcade.key.MINUS:
-            self.scene = arcade.Scene.from_tilemap(self.tilemap_2)
+            self.dimension -= 1
+            self.switch_tilemap(self.dimension)
         elif symbol == arcade.key.K:
             self.camera_mode = 2 if self.camera_mode == 1 else 1
         elif symbol == arcade.key.P:
@@ -385,10 +419,10 @@ class Platformer(arcade.Window):
         d_pressed = self.keys_pressed.get(arcade.key.D, False)
         if a_pressed and not d_pressed:
             self.player.change_x = -self.player_speed
-            self.player.texture = arcade.load_texture("images/player-back.png")
+            self.player.texture = self.player_back_texture
         elif d_pressed and not a_pressed:
             self.player.change_x = self.player_speed
-            self.player.texture = arcade.load_texture("images/player.png")
+            self.player.texture = self.player_texture
         else:
             self.player.change_x = 0
 
@@ -406,7 +440,7 @@ class Platformer(arcade.Window):
             self.last_y = self.player.center_y
             self.jumps = self.max_jumps
 
-        if self.player.center_y <= -10 and self.player.center_x < 3300:
+        if self.player.center_y <= -10 and self.player.center_x < 3300 and self.dimension == 1:
             if self.lives > 1:
                 self.lives -= 1
                 self.player.center_x = self.safe_point[0]
@@ -414,8 +448,9 @@ class Platformer(arcade.Window):
             else:
                 self.alive = False
                 self.game_over = True
-        elif self.player.center_y <= -10 and self.player.center_x >= 3300:
-            self.dimension += 1 
+        elif self.player.center_y <= -10 and self.player.center_x >= 3300 and self.dimension == 1:
+            self.dimension = 2
+            self.switch_tilemap(2)
         
         if arcade.check_for_collision_with_list(self.player, self.safe_points):
             self.safe_point = [self.player.center_x, self.player.center_y]
@@ -426,6 +461,11 @@ class Platformer(arcade.Window):
             self.coins += 1
 
     def on_draw(self):
+        if self.dimension == 1:
+            arcade.set_background_color(arcade.color.SKY_BLUE)
+        elif self.dimension == 2:
+            arcade.set_background_color(arcade.color.LIGHT_RED_OCHRE)
+
         if self.start_screen:
             self.clear()
             arcade.draw_texture_rectangle(self.width/2, self.height/2, self.width, self.height, self.start_screen_image)
@@ -521,5 +561,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-#add a warning when no saving files are free
-#add load file info
+#add custom dimension system
