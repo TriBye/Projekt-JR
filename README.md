@@ -2,7 +2,7 @@
 
 Projekt JR, made by TriBye (ITX), for ITX MINI (ITX Studios)
 
-Version: 0
+Version: 0.2
 Status: Not Finished
 
 Projekt JR (Version 0-1) is free for everyone to use and to copy. Further Version will not be shared under the Projekt JR Repository.
